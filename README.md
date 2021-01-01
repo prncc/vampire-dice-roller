@@ -6,7 +6,7 @@ A dice roller for the [Vampire the Masquerade](https://www.modiphius.net/collect
 
 ## Installation
 
-To use the roller, download the latest release zip, extract it anywhere, and double click on `vampire-dice-roller.html` to open the app.
+To use the roller, download [the latest release zip](https://github.com/prncc/vampire-dice-roller/archive/v1.0.zip), extract it anywhere, and double click on `vampire-dice-roller.html` to open the app.
 
 ## Usage
 
