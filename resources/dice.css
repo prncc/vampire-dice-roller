@@ -16,14 +16,6 @@
     background-color: rgba(0, 0, 0, 0);
 }
 
-.bottom_field {
-    position: absolute;
-    text-align: center;
-    bottom: 5px;
-    width: inherit;
-    padding: 0px;
-}
-
 #label {
     font-size: 32pt;
     word-spacing: 0.5em;
@@ -55,17 +47,15 @@
     top: 25%;
 }
 
-#selector_div button {
-    font-size: 20pt;
-    color: rgb(255, 255, 255);
-    background-color: rgba(0, 0, 0, 0.6);
-    cursor: pointer;
-    border: none;
-    width: 5em;
-    top: 62%;
-}
-
 .dice_place {
     position: absolute;
     border: solid black 1px;
+}
+
+#canvas-cover {
+    position: absolute;
+    left: 0;
+    top: 100px;
+    bottom: 0;
+    right: 0;
 }

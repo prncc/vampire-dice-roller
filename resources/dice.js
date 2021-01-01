@@ -137,8 +137,10 @@
         return geom;
     }
 
-    this.standart_d20_dice_face_labels = [' ', '0', '1', '2', '3', '4', '5', '6', '7', '8',
-            '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20'];
+    this.standart_d20_dice_face_labels = [' ', '.☥.', ' ', ' ', ' ', ' ', ' ', '☥', '☥', '☥', '☥',
+      '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20'];
+    this.blood_d20_dice_face_labels = [' ', '.☥.', '☠', ' ', ' ', ' ', ' ', '☥', '☥', '☥', '☥',
+      '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20'];
     this.standart_d100_dice_face_labels = [' ', '00', '10', '20', '30', '40', '50',
             '60', '70', '80', '90'];
 
@@ -146,7 +148,7 @@
         return Math.pow(2, Math.floor(Math.log(approx) / Math.log(2)));
     }
 
-    this.create_dice_materials = function(face_labels, size, margin) {
+    this.create_dice_materials = function(face_labels, size, margin, isBlood = false) {
         function create_text_texture(text, color, back_color) {
             if (text == undefined) return null;
             var canvas = document.createElement("canvas");
@@ -168,9 +170,11 @@
             return texture;
         }
         var materials = [];
-        for (var i = 0; i < face_labels.length; ++i)
+        for (var i = 0; i < face_labels.length; ++i) {
+            const fillColor = isBlood ? this.blood_dice_color : this.dice_color;
             materials.push(new THREE.MeshPhongMaterial($t.copyto(this.material_options,
-                        { map: create_text_texture(face_labels[i], this.label_color, this.dice_color) })));
+                        { map: create_text_texture(face_labels[i], this.label_color, fillColor) })));
+        }
         return materials;
     }
 
@@ -277,6 +281,7 @@
     };
     this.label_color = '#aaaaaa';
     this.dice_color = '#202020';
+    this.blood_dice_color = '#381111';
     this.ambient_light_color = 0xf0f5fb;
     this.spot_light_color = 0xefdfd5;
     this.selector_back_colors = { color: 0x404040, shininess: 0, emissive: 0x858787 };
@@ -312,10 +317,27 @@
         return new THREE.Mesh(this.d8_geometry, this.dice_material);
     }
 
-    this.create_d10 = function() {
+    this.create_d10 = function(isBlood = false) {
         if (!this.d10_geometry) this.d10_geometry = this.create_d10_geometry(this.scale * 0.9);
         if (!this.dice_material) this.dice_material = new THREE.MeshFaceMaterial(
-                this.create_dice_materials(this.standart_d20_dice_face_labels, this.scale / 2, 1.0));
+          this.create_dice_materials(
+            this.standart_d20_dice_face_labels,
+            this.scale / 2,
+            1.0,
+            false,
+          )
+        );
+        if (!this.blood_dice_material) this.blood_dice_material = new THREE.MeshFaceMaterial(
+          this.create_dice_materials(
+            this.blood_d20_dice_face_labels,
+            this.scale / 2,
+            1.0,
+            true,
+          )
+        );
+        if (isBlood) {
+          return new THREE.Mesh(this.d10_geometry, this.blood_dice_material);
+        }
         return new THREE.Mesh(this.d10_geometry, this.dice_material);
     }
 
@@ -340,27 +362,13 @@
         return new THREE.Mesh(this.d10_geometry, this.d100_material);
     }
 
-    this.parse_notation = function(notation) {
-        var no = notation.split('@');
-        var dr0 = /\s*(\d*)([a-z]+)(\d+)(\s*(\+|\-)\s*(\d+)){0,1}\s*(\+|$)/gi;
-        var dr1 = /(\b)*(\d+)(\b)*/gi;
-        var ret = { set: [], constant: 0, result: [], error: false }, res;
-        while (res = dr0.exec(no[0])) {
-            var command = res[2];
-            if (command != 'd') { ret.error = true; continue; }
-            var count = parseInt(res[1]);
-            if (res[1] == '') count = 1;
-            var type = 'd' + res[3];
-            if (this.known_types.indexOf(type) == -1) { ret.error = true; continue; }
-            while (count--) ret.set.push(type);
-            if (res[5] && res[6]) {
-                if (res[5] == '+') ret.constant += parseInt(res[6]);
-                else ret.constant -= parseInt(res[6]);
-            }
-        }
-        while (res = dr1.exec(no[1])) {
-            ret.result.push(parseInt(res[2]));
-        }
+    this.parse_notation = function(regularCount, bloodCount) {
+        var ret = { set: [], bloodSet: [], constant: 0, result: [], error: false }, res;
+        var regularCountCopy = regularCount;
+        var bloodCountCopy = bloodCount;
+        var type = 'd10';
+        while (regularCountCopy--) { ret.set.push(type); }
+        while (bloodCountCopy--) { ret.bloodSet.push(type); }
         return ret;
     }
 
@@ -521,13 +529,47 @@
                 z: 0
             };
             var axis = { x: rnd(), y: rnd(), z: rnd(), a: rnd() };
-            vectors.push({ set: notation.set[i], pos: pos, velocity: velocity, angle: angle, axis: axis });
+            vectors.push({
+              set: notation.set[i],
+              pos: pos,
+              velocity: velocity,
+              angle: angle,
+              axis: axis,
+              isBlood: false,
+            });
+        }
+        for (var i in notation.bloodSet) {
+            var vec = make_random_vector(vector);
+            var pos = {
+                x: this.w * (vec.x > 0 ? -1 : 1) * 0.9,
+                y: this.h * (vec.y > 0 ? -1 : 1) * 0.9,
+                z: rnd() * 200 + 200
+            };
+            var projector = Math.abs(vec.x / vec.y);
+            if (projector > 1.0) pos.y /= projector; else pos.x *= projector;
+            var velvec = make_random_vector(vector);
+            var velocity = { x: velvec.x * boost, y: velvec.y * boost, z: -10 };
+            var inertia = that.dice_inertia[notation.bloodSet[i]];
+            var angle = {
+                x: -(rnd() * vec.y * 5 + inertia * vec.y),
+                y: rnd() * vec.x * 5 + inertia * vec.x,
+                z: 0
+            };
+            var axis = { x: rnd(), y: rnd(), z: rnd(), a: rnd() };
+            vectors.push({
+              set: notation.bloodSet[i],
+              pos: pos,
+              velocity: velocity,
+              angle: angle,
+              axis: axis,
+              isBlood: true,
+            });
         }
         return vectors;
     }
 
-    this.dice_box.prototype.create_dice = function(type, pos, velocity, angle, axis) {
-        var dice = that['create_' + type]();
+    this.dice_box.prototype.create_dice = function(type, pos, velocity, angle, axis, isBlood = false) {
+        var dice = that['create_' + type](isBlood);
         dice.castShadow = true;
         dice.dice_type = type;
         dice.body = new CANNON.RigidBody(that.dice_mass[type],
@@ -585,7 +627,7 @@
         }
         var matindex = closest_face.materialIndex - 1;
         if (dice.dice_type == 'd100') matindex *= 10;
-        if (dice.dice_type == 'd10' && matindex == 0) matindex = 10;
+        // if (dice.dice_type == 'd10' && matindex == 0) matindex = 10;
         return matindex;
     }
 
@@ -662,7 +704,7 @@
         this.iteration = 0;
         for (var i in vectors) {
             this.create_dice(vectors[i].set, vectors[i].pos, vectors[i].velocity,
-                    vectors[i].angle, vectors[i].axis);
+                    vectors[i].angle, vectors[i].axis, vectors[i].isBlood);
         }
     }
 
@@ -773,7 +815,7 @@
         }
         vector.x /= dist; vector.y /= dist;
         var notation = notation_getter.call(box);
-        if (notation.set.length == 0) return;
+        if (notation.set.length == 0 && notation.bloodSet.length == 0) return;
         var vectors = box.generate_vectors(notation, vector, boost);
         box.rolling = true;
         if (before_roll) before_roll.call(box, vectors, notation, roll);
