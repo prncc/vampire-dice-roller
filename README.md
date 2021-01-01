@@ -11,7 +11,7 @@ To use the roller, download [the latest release zip](https://github.com/prncc/va
 ## Usage
 
 Select the number of dice to roll using sliders in the upper left corner.
-Roll by dragging across the while canvas, or by clicking the "☥ roll ☥" button.
+Roll by dragging across the white canvas, or by clicking the "☥ roll ☥" button.
 You can see a calculation of the current and previous rolls in the upper right corner.
 
 The app is offline-only, so you have to trust your friends! :) 
